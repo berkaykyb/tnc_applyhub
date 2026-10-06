@@ -1,5 +1,12 @@
 import { useState } from 'react'
 
+const statusLabels = {
+  applied: 'Başvuruldu',
+  interview: 'Görüşme',
+  offer: 'Teklif Alındı',
+  rejected: 'Reddedildi',
+}
+
 function App() {
   const [applications, setApplications] = useState([])
   const [feedback, setFeedback] = useState(null)
@@ -74,10 +81,9 @@ function App() {
           <br />
           <select id="status" name="status" defaultValue="" required>
             <option value="" disabled>Durum seç</option>
-            <option value="applied">Başvuruldu</option>
-            <option value="interview">Görüşme</option>
-            <option value="offer">Teklif Alındı</option>
-            <option value="rejected">Reddedildi</option>
+            {Object.entries(statusLabels).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
           </select>
         </p>
 
@@ -98,6 +104,39 @@ function App() {
           )}
         </p>
       )}
+
+      <section aria-labelledby="applications-heading">
+        <h2 id="applications-heading">Başvurular</h2>
+
+        {applications.length === 0 ? (
+          <p>Henüz başvuru eklenmedi.</p>
+        ) : (
+          <ul>
+            {applications.map((application) => (
+              <li key={application.id}>
+                <h3>{application.company}</h3>
+                <dl>
+                  <dt>Pozisyon</dt>
+                  <dd>{application.position}</dd>
+
+                  <dt>Başvuru tarihi</dt>
+                  <dd>
+                    <time dateTime={application.applicationDate}>
+                      {application.applicationDate.split('-').reverse().join('.')}
+                    </time>
+                  </dd>
+
+                  <dt>Durum</dt>
+                  <dd>{statusLabels[application.status]}</dd>
+
+                  <dt>Not</dt>
+                  <dd>{application.note || 'Not eklenmedi.'}</dd>
+                </dl>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </main>
   )
 }
