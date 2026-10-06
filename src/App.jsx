@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { loadApplications, saveApplications } from './applicationStorage.js'
 
 const statusLabels = {
@@ -6,6 +6,14 @@ const statusLabels = {
   interview: 'Görüşme',
   offer: 'Teklif Alındı',
   rejected: 'Reddedildi',
+}
+
+const emptyFormValues = {
+  company: '',
+  position: '',
+  applicationDate: '',
+  status: '',
+  note: '',
 }
 
 function App() {
@@ -20,7 +28,36 @@ function App() {
     }
   })
   const [feedback, setFeedback] = useState(null)
+  const [formValues, setFormValues] = useState(emptyFormValues)
+  const [editingId, setEditingId] = useState(null)
+  const companyInputRef = useRef(null)
   const { applications, storageError } = applicationState
+
+  function persistApplications(updatedApplications, successMessage) {
+    if (storageError) {
+      return false
+    }
+
+    try {
+      saveApplications(updatedApplications)
+    } catch {
+      setFeedback({
+        type: 'error',
+        message: 'Değişiklik kaydedilemedi. Mevcut kayıtlar ve formdaki bilgilerin korunuyor; tekrar deneyebilirsin.',
+      })
+      return false
+    }
+
+    setApplicationState({ applications: updatedApplications, storageError: '' })
+    setFeedback({ type: 'success', message: successMessage })
+    return true
+  }
+
+  function handleFormChange(event) {
+    const { name, value } = event.target
+    setFormValues((previousValues) => ({ ...previousValues, [name]: value }))
+    setFeedback(null)
+  }
 
   function handleSubmit(event) {
     event.preventDefault()
@@ -29,8 +66,7 @@ function App() {
       return
     }
 
-    const form = event.currentTarget
-    const formData = new FormData(form)
+    const formData = new FormData(event.currentTarget)
     const company = formData.get('company').trim()
     const position = formData.get('position').trim()
 
@@ -43,7 +79,7 @@ function App() {
     }
 
     const application = {
-      id: crypto.randomUUID(),
+      id: editingId ?? crypto.randomUUID(),
       company,
       position,
       applicationDate: formData.get('applicationDate'),
@@ -51,21 +87,40 @@ function App() {
       note: formData.get('note').trim(),
     }
 
-    const updatedApplications = [...applications, application]
+    const updatedApplications = editingId
+      ? applications.map((existingApplication) => (
+        existingApplication.id === editingId ? application : existingApplication
+      ))
+      : [...applications, application]
 
-    try {
-      saveApplications(updatedApplications)
-    } catch {
-      setFeedback({
-        type: 'error',
-        message: 'Başvuru kaydedilemedi. Formdaki bilgilerin korunuyor; tekrar deneyebilirsin.',
-      })
+    const successMessage = editingId ? 'Başvuru güncellendi.' : 'Başvuru eklendi.'
+
+    if (!persistApplications(updatedApplications, successMessage)) {
       return
     }
 
-    setApplicationState({ applications: updatedApplications, storageError: '' })
-    setFeedback({ type: 'success', message: 'Başvuru eklendi.' })
-    form.reset()
+    setFormValues(emptyFormValues)
+    setEditingId(null)
+  }
+
+  function handleEdit(application) {
+    setFormValues({
+      company: application.company,
+      position: application.position,
+      applicationDate: application.applicationDate,
+      status: application.status,
+      note: application.note,
+    })
+    setEditingId(application.id)
+    setFeedback(null)
+    companyInputRef.current?.focus()
+  }
+
+  function handleCancelEdit() {
+    setFormValues(emptyFormValues)
+    setEditingId(null)
+    setFeedback(null)
+    companyInputRef.current?.focus()
   }
 
   function handleDelete(applicationId) {
@@ -77,18 +132,15 @@ function App() {
       (application) => application.id !== applicationId,
     )
 
-    try {
-      saveApplications(updatedApplications)
-    } catch {
-      setFeedback({
-        type: 'error',
-        message: 'Başvuru silinemedi. Mevcut kayıtlar korunuyor; tekrar deneyebilirsin.',
-      })
+    if (!persistApplications(updatedApplications, 'Başvuru silindi.')) {
       return
     }
 
-    setApplicationState({ applications: updatedApplications, storageError: '' })
-    setFeedback({ type: 'success', message: 'Başvuru silindi.' })
+    if (editingId === applicationId) {
+      setEditingId(null)
+      setFormValues(emptyFormValues)
+      companyInputRef.current?.focus()
+    }
   }
 
   return (
@@ -96,22 +148,37 @@ function App() {
       <h1>ApplyHub</h1>
       <p>Staj ve iş başvurularını tek yerde takip et.</p>
 
-      <h2>Başvuru ekle</h2>
+      <h2>{editingId ? 'Başvuruyu düzenle' : 'Başvuru ekle'}</h2>
       <p>Not dışındaki alanlar zorunludur.</p>
 
       {storageError && <p role="alert">{storageError}</p>}
 
-      <form onSubmit={handleSubmit} onInput={() => setFeedback(null)}>
+      <form onSubmit={handleSubmit}>
         <p>
           <label htmlFor="company">Şirket adı</label>
           <br />
-          <input id="company" name="company" type="text" required />
+          <input
+            ref={companyInputRef}
+            id="company"
+            name="company"
+            type="text"
+            value={formValues.company}
+            onChange={handleFormChange}
+            required
+          />
         </p>
 
         <p>
           <label htmlFor="position">Pozisyon</label>
           <br />
-          <input id="position" name="position" type="text" required />
+          <input
+            id="position"
+            name="position"
+            type="text"
+            value={formValues.position}
+            onChange={handleFormChange}
+            required
+          />
         </p>
 
         <p>
@@ -121,6 +188,8 @@ function App() {
             id="applicationDate"
             name="applicationDate"
             type="date"
+            value={formValues.applicationDate}
+            onChange={handleFormChange}
             required
           />
         </p>
@@ -128,7 +197,13 @@ function App() {
         <p>
           <label htmlFor="status">Durum</label>
           <br />
-          <select id="status" name="status" defaultValue="" required>
+          <select
+            id="status"
+            name="status"
+            value={formValues.status}
+            onChange={handleFormChange}
+            required
+          >
             <option value="" disabled>Durum seç</option>
             {Object.entries(statusLabels).map(([value, label]) => (
               <option key={value} value={value}>{label}</option>
@@ -139,10 +214,19 @@ function App() {
         <p>
           <label htmlFor="note">Not (isteğe bağlı)</label>
           <br />
-          <textarea id="note" name="note" rows={4} />
+          <textarea
+            id="note"
+            name="note"
+            rows={4}
+            value={formValues.note}
+            onChange={handleFormChange}
+          />
         </p>
 
-        <button type="submit" disabled={Boolean(storageError)}>Başvuru ekle</button>
+        <button type="submit" disabled={Boolean(storageError)}>
+          {editingId ? 'Değişiklikleri kaydet' : 'Başvuru ekle'}
+        </button>
+        {editingId && <button type="button" onClick={handleCancelEdit}>Vazgeç</button>}
       </form>
 
       {feedback && (
@@ -183,6 +267,9 @@ function App() {
                   <dt>Not</dt>
                   <dd>{application.note || 'Not eklenmedi.'}</dd>
                 </dl>
+                <button type="button" onClick={() => handleEdit(application)}>
+                  Düzenle
+                </button>
                 <button type="button" onClick={() => handleDelete(application.id)}>
                   Sil
                 </button>
