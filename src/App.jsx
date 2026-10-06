@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { loadApplications, saveApplications } from './applicationStorage.js'
 
 const statusLabels = {
   applied: 'Başvuruldu',
@@ -8,11 +9,25 @@ const statusLabels = {
 }
 
 function App() {
-  const [applications, setApplications] = useState([])
+  const [applicationState, setApplicationState] = useState(() => {
+    try {
+      return { applications: loadApplications(), storageError: '' }
+    } catch {
+      return {
+        applications: [],
+        storageError: 'Kaydedilmiş başvurular okunamadı. Mevcut verileri korumak için yeni kayıt eklenemiyor.',
+      }
+    }
+  })
   const [feedback, setFeedback] = useState(null)
+  const { applications, storageError } = applicationState
 
   function handleSubmit(event) {
     event.preventDefault()
+
+    if (storageError) {
+      return
+    }
 
     const form = event.currentTarget
     const formData = new FormData(form)
@@ -36,10 +51,19 @@ function App() {
       note: formData.get('note').trim(),
     }
 
-    setApplications((previousApplications) => [
-      ...previousApplications,
-      application,
-    ])
+    const updatedApplications = [...applications, application]
+
+    try {
+      saveApplications(updatedApplications)
+    } catch {
+      setFeedback({
+        type: 'error',
+        message: 'Başvuru kaydedilemedi. Formdaki bilgilerin korunuyor; tekrar deneyebilirsin.',
+      })
+      return
+    }
+
+    setApplicationState({ applications: updatedApplications, storageError: '' })
     setFeedback({ type: 'success', message: 'Başvuru eklendi.' })
     form.reset()
   }
@@ -51,6 +75,8 @@ function App() {
 
       <h2>Başvuru ekle</h2>
       <p>Not dışındaki alanlar zorunludur.</p>
+
+      {storageError && <p role="alert">{storageError}</p>}
 
       <form onSubmit={handleSubmit} onInput={() => setFeedback(null)}>
         <p>
@@ -93,14 +119,14 @@ function App() {
           <textarea id="note" name="note" rows={4} />
         </p>
 
-        <button type="submit">Başvuru ekle</button>
+        <button type="submit" disabled={Boolean(storageError)}>Başvuru ekle</button>
       </form>
 
       {feedback && (
         <p role={feedback.type === 'error' ? 'alert' : 'status'}>
           {feedback.message}
           {feedback.type === 'success' && (
-            <> Bu oturumda eklenen başvuru sayısı: {applications.length}.</>
+            <> Toplam başvuru sayısı: {applications.length}.</>
           )}
         </p>
       )}
@@ -108,7 +134,9 @@ function App() {
       <section aria-labelledby="applications-heading">
         <h2 id="applications-heading">Başvurular</h2>
 
-        {applications.length === 0 ? (
+        {storageError ? (
+          <p>Başvuru listesi yüklenemedi.</p>
+        ) : applications.length === 0 ? (
           <p>Henüz başvuru eklenmedi.</p>
         ) : (
           <ul>
