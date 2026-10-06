@@ -68,6 +68,29 @@ function App() {
     form.reset()
   }
 
+  function handleDelete(applicationId) {
+    if (!window.confirm('Bu başvuruyu silmek istiyor musun?')) {
+      return
+    }
+
+    const updatedApplications = applications.filter(
+      (application) => application.id !== applicationId,
+    )
+
+    try {
+      saveApplications(updatedApplications)
+    } catch {
+      setFeedback({
+        type: 'error',
+        message: 'Başvuru silinemedi. Mevcut kayıtlar korunuyor; tekrar deneyebilirsin.',
+      })
+      return
+    }
+
+    setApplicationState({ applications: updatedApplications, storageError: '' })
+    setFeedback({ type: 'success', message: 'Başvuru silindi.' })
+  }
+
   return (
     <main>
       <h1>ApplyHub</h1>
@@ -160,6 +183,9 @@ function App() {
                   <dt>Not</dt>
                   <dd>{application.note || 'Not eklenmedi.'}</dd>
                 </dl>
+                <button type="button" onClick={() => handleDelete(application.id)}>
+                  Sil
+                </button>
               </li>
             ))}
           </ul>
