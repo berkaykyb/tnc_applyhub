@@ -2,6 +2,9 @@ import ApplicationCard from './ApplicationCard.jsx'
 
 function ApplicationList({
   applications,
+  totalCount,
+  selectedStatus,
+  onResetFilter,
   editingId,
   storageError,
   statusLabels,
@@ -15,15 +18,42 @@ function ApplicationList({
     >
       <div className="section-header">
         <h2 id="applications-heading">Başvurular</h2>
-        {!storageError && <span className="count">{applications.length}</span>}
+        {!storageError && (
+          <span
+            className="count"
+            role="status"
+            aria-label={`${applications.length} başvuru gösteriliyor, toplam ${totalCount}`}
+          >
+            {selectedStatus === 'all'
+              ? applications.length
+              : `${applications.length} / ${totalCount}`}
+          </span>
+        )}
       </div>
 
       {storageError ? (
         <p className="empty-state">Başvuru listesi yüklenemedi.</p>
       ) : applications.length === 0 ? (
         <div className="empty-state">
-          <p>Henüz başvuru eklenmedi.</p>
-          <span>Formu doldur; ilk başvurun burada görünsün.</span>
+          <p>
+            {totalCount === 0
+              ? 'Henüz başvuru eklenmedi.'
+              : 'Bu durumda başvuru yok.'}
+          </p>
+          <span>
+            {totalCount === 0
+              ? 'Formu doldur; ilk başvurun burada görünsün.'
+              : 'Diğer başvurularını görmek için filtreyi değiştirebilirsin.'}
+          </span>
+          {selectedStatus !== 'all' && (
+            <button
+              className="button button-secondary reset-filter"
+              type="button"
+              onClick={onResetFilter}
+            >
+              Tümünü göster
+            </button>
+          )}
         </div>
       ) : (
         <ul className="application-list">

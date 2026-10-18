@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { loadApplications, saveApplications } from './applicationStorage.js'
 import ApplicationForm from './components/ApplicationForm.jsx'
 import ApplicationList from './components/ApplicationList.jsx'
+import ApplicationFilters from './components/ApplicationFilters.jsx'
 import './App.css'
 
 const statusLabels = {
@@ -34,8 +35,13 @@ function App() {
   const [feedback, setFeedback] = useState(null)
   const [formValues, setFormValues] = useState(emptyFormValues)
   const [editingId, setEditingId] = useState(null)
+  const [selectedStatus, setSelectedStatus] = useState('all')
   const companyInputRef = useRef(null)
   const { applications, storageError } = applicationState
+  const visibleApplications =
+    selectedStatus === 'all'
+      ? applications
+      : applications.filter((application) => application.status === selectedStatus)
 
   function persistApplications(updatedApplications, successMessage) {
     if (storageError) {
@@ -160,6 +166,14 @@ function App() {
         <p>Staj ve iş başvurularını tek yerde takip et.</p>
       </header>
 
+      <ApplicationFilters
+        applications={applications}
+        statusLabels={statusLabels}
+        selectedStatus={selectedStatus}
+        onChange={setSelectedStatus}
+        disabled={Boolean(storageError)}
+      />
+
       <div className="workspace">
         <ApplicationForm
           formValues={formValues}
@@ -175,7 +189,10 @@ function App() {
         />
 
         <ApplicationList
-          applications={applications}
+          applications={visibleApplications}
+          totalCount={applications.length}
+          selectedStatus={selectedStatus}
+          onResetFilter={() => setSelectedStatus('all')}
           editingId={editingId}
           storageError={storageError}
           statusLabels={statusLabels}
