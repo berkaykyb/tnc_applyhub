@@ -18,6 +18,7 @@ function ApplicationFilters({
           key={status}
           type="button"
           className="filter-button"
+          data-status={status}
           aria-pressed={selectedStatus === status}
           onClick={() => onChange(status)}
           disabled={disabled}

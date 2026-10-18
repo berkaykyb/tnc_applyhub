@@ -3,6 +3,7 @@ import { loadApplications, saveApplications } from './applicationStorage.js'
 import ApplicationForm from './components/ApplicationForm.jsx'
 import ApplicationList from './components/ApplicationList.jsx'
 import ApplicationFilters from './components/ApplicationFilters.jsx'
+import AppHeader from './components/AppHeader.jsx'
 import './App.css'
 
 const statusLabels = {
@@ -160,11 +161,7 @@ function App() {
 
   return (
     <main className="app-shell">
-      <header className="app-header">
-        <p className="eyebrow">Başvuru takibi</p>
-        <h1>ApplyHub</h1>
-        <p>Staj ve iş başvurularını tek yerde takip et.</p>
-      </header>
+      <AppHeader />
 
       <ApplicationFilters
         applications={applications}
