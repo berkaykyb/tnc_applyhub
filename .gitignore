@@ -1,7 +1,7 @@
 node_modules/
 dist/
 /AI/
-/README.md
+/*.pdf
 .DS_Store
 *.log
 .env
